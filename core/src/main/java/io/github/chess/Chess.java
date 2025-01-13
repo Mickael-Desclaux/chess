@@ -2,11 +2,15 @@ package io.github.chess;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.ScreenUtils;
-import io.github.chess.entities.Board;
+import io.github.chess.entities.Game;
 import io.github.chess.entities.Piece;
+import io.github.chess.entities.Position;
+import io.github.chess.enums.PieceColor;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,12 +20,15 @@ public class Chess extends ApplicationAdapter {
     private static Map<String, Texture> pieceTextures;
     private Texture boardTexture;
     private SpriteBatch batch;
-    private Board board;
     private int boardSize = 480;
+    private Position selectedPosition;
+    private boolean isPieceSelected;
+    private Game game;
+    private Texture highlightTexture;
 
     @Override
     public void create() {
-        board = new Board();
+        game = new Game();
         batch = new SpriteBatch();
 
         boardTexture = new Texture("board/chess_board.png");
@@ -43,6 +50,16 @@ public class Chess extends ApplicationAdapter {
         pieceTextures.put("BLACK_BISHOP", new Texture("pieces/black/black_bishop.png"));
         pieceTextures.put("BLACK_QUEEN", new Texture("pieces/black/black_queen.png"));
         pieceTextures.put("BLACK_KING", new Texture("pieces/black/black_king.png"));
+
+        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pixmap.setColor(1, 1, 1, 1);
+        pixmap.fill();
+        highlightTexture = new Texture(pixmap);
+        pixmap.dispose();
+    }
+
+    private Texture getHighlightTexture() {
+        return highlightTexture;
     }
 
     public static Texture getPieceTexture(Piece piece) {
@@ -52,6 +69,8 @@ public class Chess extends ApplicationAdapter {
 
     @Override
     public void render() {
+        handleInput();
+
         ScreenUtils.clear(0, 0, 0, 0);
         batch.begin();
 
@@ -63,8 +82,26 @@ public class Chess extends ApplicationAdapter {
         // Calculer la taille exacte d'une case
         float squareSize = (float) boardSize / 8;
 
+        if (game.isInCheck(PieceColor.WHITE)) {
+            Position whiteKingPos = game.getWhiteKingPosition(); // Il faut ajouter cette méthode dans Game
+            float x = boardX + (whiteKingPos.getColumn() * squareSize);
+            float y = boardY + ((7 - whiteKingPos.getRow()) * squareSize);
+            batch.setColor(1, 0, 0, 0.5f); // Rouge semi-transparent
+            batch.draw(getHighlightTexture(), x, y, squareSize, squareSize);
+            batch.setColor(1, 1, 1, 1); // Réinitialiser la couleur
+        }
+
+        if (game.isInCheck(PieceColor.BLACK)) {
+            Position blackKingPos = game.getBlackKingPosition(); // Il faut ajouter cette méthode dans Game
+            float x = boardX + (blackKingPos.getColumn() * squareSize);
+            float y = boardY + ((7 - blackKingPos.getRow()) * squareSize);
+            batch.setColor(1, 0, 0, 0.5f);
+            batch.draw(getHighlightTexture(), x, y, squareSize, squareSize);
+            batch.setColor(1, 1, 1, 1);
+        }
+
         // Draw pieces
-        Piece[][] pieces = board.getBoard();
+        Piece[][] pieces = game.getBoard().getBoard();
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
                 Piece piece = pieces[row][col];
@@ -91,6 +128,7 @@ public class Chess extends ApplicationAdapter {
             }
         }
 
+
         batch.end();
     }
 
@@ -100,6 +138,54 @@ public class Chess extends ApplicationAdapter {
         boardTexture.dispose();
         for (Texture texture : pieceTextures.values()) {
             texture.dispose();
+        }
+    }
+
+    private void handleInput() {
+        if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
+            int boardX = Gdx.graphics.getWidth() / 2 - boardSize / 2;
+            int boardY = Gdx.graphics.getHeight() / 2 - boardSize / 2;
+            float squareSize = boardSize / 8f;
+
+            float mouseX = Gdx.input.getX();
+            float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
+
+            if (mouseX >= boardX && mouseX < boardX + boardSize &&
+                mouseY >= boardY && mouseY < boardY + boardSize) {
+
+                int col = (int)((mouseX - boardX) / squareSize);
+                int row = 7 - (int)((mouseY - boardY) / squareSize);
+
+                Position clickedPos = new Position(row, col);
+                Piece[][] board = game.getBoard().getBoard();
+
+                if (!isPieceSelected) {
+                    // Premier clic - sélection de pièce
+                    Piece clickedPiece = board[row][col];
+                    if (clickedPiece != null &&
+                        ((game.isWhiteTurn() && clickedPiece.getColor() == PieceColor.WHITE) ||
+                            (!game.isWhiteTurn() && clickedPiece.getColor() == PieceColor.BLACK))) {
+                        selectedPosition = clickedPos;
+                        isPieceSelected = true;
+                    }
+                } else {
+                    if (selectedPosition != null) {
+                        if (game.movePiece(selectedPosition, clickedPos)) {
+                            System.out.println("Pièce déplacée avec succès!");
+                        } else {
+                            System.out.println("Mouvement invalide!");
+                        }
+                        selectedPosition = null;
+                        isPieceSelected = false;
+                    }
+                }
+            }
+        }
+
+        // Clic droit pour désélectionner
+        if (Gdx.input.isButtonJustPressed(Input.Buttons.RIGHT)) {
+            selectedPosition = null;
+            isPieceSelected = false;
         }
     }
 }
