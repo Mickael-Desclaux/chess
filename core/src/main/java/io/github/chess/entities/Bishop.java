@@ -4,8 +4,8 @@ import io.github.chess.enums.PieceColor;
 
 public class Bishop extends Piece {
 
-    public Bishop(PieceColor pieceColor, Position position) {
-        super(pieceColor, position);
+    public Bishop(PieceColor pieceColor, Position position, Game game) {
+        super(pieceColor, position, game);
     }
 
     @Override

@@ -20,7 +20,7 @@ public class Chess extends ApplicationAdapter {
     private static Map<String, Texture> pieceTextures;
     private Texture boardTexture;
     private SpriteBatch batch;
-    private int boardSize = 480;
+    private final int boardSize = 480;
     private Position selectedPosition;
     private boolean isPieceSelected;
     private Game game;
@@ -92,7 +92,7 @@ public class Chess extends ApplicationAdapter {
         }
 
         if (game.isInCheck(PieceColor.BLACK)) {
-            Position blackKingPos = game.getBlackKingPosition(); // Il faut ajouter cette méthode dans Game
+            Position blackKingPos = game.getBlackKingPosition();
             float x = boardX + (blackKingPos.getColumn() * squareSize);
             float y = boardY + ((7 - blackKingPos.getRow()) * squareSize);
             batch.setColor(1, 0, 0, 0.5f);

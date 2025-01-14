@@ -4,8 +4,8 @@ import io.github.chess.enums.PieceColor;
 
 public class Queen extends Piece {
 
-    public Queen(PieceColor pieceColor, Position position) {
-        super(pieceColor, position);
+    public Queen(PieceColor pieceColor, Position position, Game game) {
+        super(pieceColor, position, game);
     }
 
     @Override

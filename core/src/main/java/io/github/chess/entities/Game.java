@@ -4,18 +4,58 @@ import io.github.chess.enums.PieceColor;
 
 public class Game {
 
-    private Board board;
+    private final Board board;
     private boolean whiteTurn = true;
     private Position whiteKingPosition;
     private Position blackKingPosition;
+    private Position enPassantTarget;
+    private Position lastPawnDoubleMove;
 
     public Game() {
         this.board = new Board();
-        this.whiteTurn = true;
+        initializeBoard();
         updateKingPositions();
     }
 
+    private void initializeBoard() {
+        Piece[][] pieces = board.getBoard();
+
+        // Initialiser les pions
+        for (int col = 0; col < 8; col++) {
+            pieces[1][col] = new Pawn(PieceColor.BLACK, new Position(1, col), this);
+            pieces[6][col] = new Pawn(PieceColor.WHITE, new Position(6, col), this);
+        }
+
+        // Initialiser les autres pièces
+        // Tours
+        pieces[0][0] = new Rook(PieceColor.BLACK, new Position(0, 0), this);
+        pieces[0][7] = new Rook(PieceColor.BLACK, new Position(0, 7), this);
+        pieces[7][0] = new Rook(PieceColor.WHITE, new Position(7, 0), this);
+        pieces[7][7] = new Rook(PieceColor.WHITE, new Position(7, 7), this);
+
+        // Cavaliers
+        pieces[0][1] = new Knight(PieceColor.BLACK, new Position(0, 1), this);
+        pieces[0][6] = new Knight(PieceColor.BLACK, new Position(0, 6), this);
+        pieces[7][1] = new Knight(PieceColor.WHITE, new Position(7, 1), this);
+        pieces[7][6] = new Knight(PieceColor.WHITE, new Position(7, 6), this);
+
+        // Fous
+        pieces[0][2] = new Bishop(PieceColor.BLACK, new Position(0, 2), this);
+        pieces[0][5] = new Bishop(PieceColor.BLACK, new Position(0, 5), this);
+        pieces[7][2] = new Bishop(PieceColor.WHITE, new Position(7, 2), this);
+        pieces[7][5] = new Bishop(PieceColor.WHITE, new Position(7, 5), this);
+
+        // Reines
+        pieces[0][3] = new Queen(PieceColor.BLACK, new Position(0, 3), this);
+        pieces[7][3] = new Queen(PieceColor.WHITE, new Position(7, 3), this);
+
+        // Rois
+        pieces[0][4] = new King(PieceColor.BLACK, new Position(0, 4), this);
+        pieces[7][4] = new King(PieceColor.WHITE, new Position(7, 4), this);
+    }
+
     public boolean movePiece(Position from, Position to) {
+        System.out.println(enPassantTarget);
         Piece piece = board.getBoard()[from.getRow()][from.getColumn()];
 
         if (piece == null || (whiteTurn && piece.getColor() != PieceColor.WHITE) ||
@@ -23,26 +63,54 @@ public class Game {
             return false;
         }
 
-        // Vérifier si le mouvement est valide et ne met pas son propre roi en échec
-        if (canMoveWithoutCheck(piece, to)) {
-            board.movePiece(from, to);
-            updateKingPositions();
-
-            // Vérifier si ce mouvement met l'adversaire en échec
-            PieceColor oppositeColor = piece.getColor() == PieceColor.WHITE ?
-                PieceColor.BLACK : PieceColor.WHITE;
-            if (isInCheck(oppositeColor)) {
-                if (isCheckmate(oppositeColor)) {
-                    System.out.println("Échec et mat !");
+        try {
+            if (canMoveWithoutCheck(piece, to)) {
+                // Gestion de la prise en passant
+                if (piece instanceof Pawn) {
+                    handleEnPassant(piece, from, to);
                 } else {
-                    System.out.println("Échec !");
+                    // Réinitialiser la cible de prise en passant si une autre pièce bouge
+                    enPassantTarget = null;
+                    lastPawnDoubleMove = null;
                 }
-            }
 
-            whiteTurn = !whiteTurn;
-            return true;
+                // Déplacer la pièce
+                board.movePiece(from, to);
+                updateKingPositions();
+                whiteTurn = !whiteTurn;
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("An error occurred while moving the piece: " + e.getMessage());
         }
         return false;
+    }
+
+    private void handleEnPassant(Piece pawn, Position from, Position to) {
+        int rowDiff = Math.abs(from.getRow() - to.getRow());
+
+        // Si un pion avance de deux cases
+        if (rowDiff == 2) {
+            enPassantTarget = new Position(
+                (from.getRow() + to.getRow()) / 2, // La case intermédiaire
+                to.getColumn()
+            );
+            lastPawnDoubleMove = to;
+            System.out.println("Double step detected: enPassantTarget = " + enPassantTarget);
+        }
+        // Si le mouvement est une prise en passant
+        else if (to.equals(enPassantTarget)) {
+            System.out.println("En passant capture detected: Target = " + enPassantTarget);
+            board.getBoard()[lastPawnDoubleMove.getRow()][lastPawnDoubleMove.getColumn()] = null;
+            // Ne pas déplacer le pion ici, cela sera fait dans movePiece
+        }
+        // Autre mouvement
+        else {
+            enPassantTarget = null;
+            lastPawnDoubleMove = null;
+            System.out.println("Resetting enPassantTarget and lastPawnDoubleMove");
+        }
     }
 
     private void updateKingPositions() {
@@ -143,5 +211,13 @@ public class Game {
 
     public Position getBlackKingPosition() {
         return blackKingPosition;
+    }
+
+    public Position getEnPassantTarget() {
+        return enPassantTarget;
+    }
+
+    public Position getLastPawnDoubleMove() {
+        return lastPawnDoubleMove;
     }
 }
