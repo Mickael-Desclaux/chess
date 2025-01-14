@@ -10,6 +10,10 @@ public class Game {
     private Position blackKingPosition;
     private Position enPassantTarget;
     private Position lastPawnDoubleMove;
+    private Position promotionPosition;
+    private PieceColor promotionColor;
+    private boolean isPromoting = false;
+    private boolean waitingForPromotionSelection = false;
 
     public Game() {
         this.board = new Board();
@@ -77,12 +81,34 @@ public class Game {
                 // Déplacer la pièce
                 board.movePiece(from, to);
                 updateKingPositions();
+
+                // Vérifier la promotion du pion
+                if (piece instanceof Pawn && isPromotion(piece, to)) {
+                    promotionPosition = to;
+                    promotionColor = piece.getColor();
+                    isPromoting = true;
+                    waitingForPromotionSelection = true;
+                    return false; // Ne pas changer de tour tant que la promotion n'est pas terminée
+                }
+
                 whiteTurn = !whiteTurn;
                 return true;
             }
         } catch (Exception e) {
             e.printStackTrace();
             System.out.println("An error occurred while moving the piece: " + e.getMessage());
+        }
+        return false;
+    }
+
+    private boolean isPromotion(Piece piece, Position to) {
+        if (piece instanceof Pawn) {
+            if (piece.getColor() == PieceColor.WHITE && to.getRow() == 0) {
+                return true;
+            }
+            if (piece.getColor() == PieceColor.BLACK && to.getRow() == 7) {
+                return true;
+            }
         }
         return false;
     }
@@ -205,6 +231,10 @@ public class Game {
         return whiteTurn;
     }
 
+    public void setWhiteTurn(boolean whiteTurn) {
+        this.whiteTurn = whiteTurn;
+    }
+
     public Position getWhiteKingPosition() {
         return whiteKingPosition;
     }
@@ -219,5 +249,29 @@ public class Game {
 
     public Position getLastPawnDoubleMove() {
         return lastPawnDoubleMove;
+    }
+
+    public Position getPromotionPosition() {
+        return promotionPosition;
+    }
+
+    public PieceColor getPromotionColor() {
+        return promotionColor;
+    }
+
+    public boolean isPromoting() {
+        return isPromoting;
+    }
+
+    public void setPromoting(boolean promoting) {
+        isPromoting = promoting;
+    }
+
+    public boolean isWaitingForPromotionSelection() {
+        return waitingForPromotionSelection;
+    }
+
+    public void setWaitingForPromotionSelection(boolean waitingForPromotionSelection) {
+        this.waitingForPromotionSelection = waitingForPromotionSelection;
     }
 }

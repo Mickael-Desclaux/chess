@@ -7,9 +7,7 @@ import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.ScreenUtils;
-import io.github.chess.entities.Game;
-import io.github.chess.entities.Piece;
-import io.github.chess.entities.Position;
+import io.github.chess.entities.*;
 import io.github.chess.enums.PieceColor;
 
 import java.util.HashMap;
@@ -128,6 +126,19 @@ public class Chess extends ApplicationAdapter {
             }
         }
 
+        // Afficher les options de promotion si nécessaire
+        if (game.isWaitingForPromotionSelection()) {
+            int buttonSize = 64;
+            int buttonSpacing = 10;
+            int startX = Gdx.graphics.getWidth() / 2 - (2 * buttonSize + buttonSpacing);
+            int startY = Gdx.graphics.getHeight() / 2 - buttonSize / 2;
+
+            // Dessiner les boutons de promotion
+            batch.draw(getPieceTexture(new Queen(game.getPromotionColor(), game.getPromotionPosition(), game)), startX, startY, buttonSize, buttonSize);
+            batch.draw(getPieceTexture(new Rook(game.getPromotionColor(), game.getPromotionPosition(), game)), startX + buttonSize + buttonSpacing, startY, buttonSize, buttonSize);
+            batch.draw(getPieceTexture(new Bishop(game.getPromotionColor(), game.getPromotionPosition(), game)), startX, startY - buttonSize - buttonSpacing, buttonSize, buttonSize);
+            batch.draw(getPieceTexture(new Knight(game.getPromotionColor(), game.getPromotionPosition(), game)), startX + buttonSize + buttonSpacing, startY - buttonSize - buttonSpacing, buttonSize, buttonSize);
+        }
 
         batch.end();
     }
@@ -142,13 +153,12 @@ public class Chess extends ApplicationAdapter {
     }
 
     private void handleInput() {
+        float mouseX = Gdx.input.getX();
+        float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
         if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
             int boardX = Gdx.graphics.getWidth() / 2 - boardSize / 2;
             int boardY = Gdx.graphics.getHeight() / 2 - boardSize / 2;
             float squareSize = boardSize / 8f;
-
-            float mouseX = Gdx.input.getX();
-            float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
 
             if (mouseX >= boardX && mouseX < boardX + boardSize &&
                 mouseY >= boardY && mouseY < boardY + boardSize) {
@@ -187,5 +197,49 @@ public class Chess extends ApplicationAdapter {
             selectedPosition = null;
             isPieceSelected = false;
         }
+
+        // Gérer la sélection de promotion
+        if (game.isWaitingForPromotionSelection() &&  Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
+            handlePromotionSelection(mouseX, mouseY);
+        }
     }
+
+    private void handlePromotionSelection(float mouseX, float mouseY) {
+        // Définir les positions des boutons de promotion
+        int buttonSize = 64;
+        int buttonSpacing = 10;
+        int startX = Gdx.graphics.getWidth() / 2 - (2 * buttonSize + buttonSpacing);
+        int startY = Gdx.graphics.getHeight() / 2 - buttonSize / 2;
+
+        // Vérifier quel bouton a été cliqué
+        if (mouseX >= startX && mouseX < startX + buttonSize &&
+            mouseY >= startY && mouseY < startY + buttonSize) {
+            promotePawn(game.getPromotionPosition(), game.getPromotionColor(), Queen.class);
+        } else if (mouseX >= startX + buttonSize + buttonSpacing && mouseX < startX + 2 * buttonSize + buttonSpacing &&
+            mouseY >= startY && mouseY < startY + buttonSize) {
+            promotePawn(game.getPromotionPosition(), game.getPromotionColor(), Rook.class);
+        } else if (mouseX >= startX && mouseX < startX + buttonSize &&
+            mouseY >= startY - buttonSize - buttonSpacing && mouseY < startY - buttonSpacing) {
+            promotePawn(game.getPromotionPosition(), game.getPromotionColor(), Bishop.class);
+        } else if (mouseX >= startX + buttonSize + buttonSpacing && mouseX < startX + 2 * buttonSize + buttonSpacing &&
+            mouseY >= startY - buttonSize - buttonSpacing && mouseY < startY - buttonSpacing) {
+            promotePawn(game.getPromotionPosition(), game.getPromotionColor(), Knight.class);
+        }
+    }
+
+    private void promotePawn(Position position, PieceColor color, Class<? extends Piece> pieceClass) {
+        try {
+            Piece promotedPiece = pieceClass.getConstructor(PieceColor.class, Position.class, Game.class)
+                .newInstance(color, position, game);
+            game.getBoard().getBoard()[position.getRow()][position.getColumn()] = promotedPiece;
+            System.out.println("Pawn promoted to " + promotedPiece.getClass().getSimpleName());
+            game.setPromoting(false);
+            game.setWaitingForPromotionSelection(false);
+            game.setWhiteTurn(!game.isWhiteTurn()); // Changer le tour après la promotion
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("An error occurred while promoting the pawn: " + e.getMessage());
+        }
+    }
+
 }
