@@ -5,7 +5,10 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.ScreenUtils;
 import io.github.chess.entities.*;
 import io.github.chess.enums.PieceColor;
@@ -23,6 +26,11 @@ public class Chess extends ApplicationAdapter {
     private boolean isPieceSelected;
     private Game game;
     private Texture highlightTexture;
+    private boolean gameOver = false;
+    private PieceColor winner = null;
+    private Texture gameOverBackground;
+    private static final int BUTTON_WIDTH = 200;
+    private static final int BUTTON_HEIGHT = 50;
 
     @Override
     public void create() {
@@ -49,11 +57,16 @@ public class Chess extends ApplicationAdapter {
         pieceTextures.put("BLACK_QUEEN", new Texture("pieces/black/black_queen.png"));
         pieceTextures.put("BLACK_KING", new Texture("pieces/black/black_king.png"));
 
-        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-        pixmap.setColor(1, 1, 1, 1);
-        pixmap.fill();
-        highlightTexture = new Texture(pixmap);
-        pixmap.dispose();
+        Pixmap highlightPixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        highlightPixmap.setColor(1, 1, 1, 1);
+        highlightPixmap.fill();
+        highlightTexture = new Texture(highlightPixmap);
+        highlightPixmap.dispose();
+        Pixmap bgPixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        bgPixmap.setColor(0, 0, 0, 0.7f);
+        bgPixmap.fill();
+        gameOverBackground = new Texture(bgPixmap);
+        bgPixmap.dispose();
     }
 
     private Texture getHighlightTexture() {
@@ -67,6 +80,20 @@ public class Chess extends ApplicationAdapter {
 
     @Override
     public void render() {
+        try {
+            if (!gameOver) {
+                boolean whiteCheckmated = game.isCheckmate(PieceColor.WHITE);
+                boolean blackCheckmated = game.isCheckmate(PieceColor.BLACK);
+
+                if (whiteCheckmated || blackCheckmated) {
+                    gameOver = true;
+                    winner = whiteCheckmated ? PieceColor.BLACK : PieceColor.WHITE;
+                }
+            }
+        } catch (Exception e) {
+            Gdx.app.error("Chess", "Error in render()", e);
+        }
+
         handleInput();
 
         ScreenUtils.clear(0, 0, 0, 0);
@@ -140,6 +167,10 @@ public class Chess extends ApplicationAdapter {
             batch.draw(getPieceTexture(new Knight(game.getPromotionColor(), game.getPromotionPosition(), game)), startX + buttonSize + buttonSpacing, startY - buttonSize - buttonSpacing, buttonSize, buttonSize);
         }
 
+        if (gameOver) {
+            renderGameOverScreen();
+        }
+
         batch.end();
     }
 
@@ -150,57 +181,91 @@ public class Chess extends ApplicationAdapter {
         for (Texture texture : pieceTextures.values()) {
             texture.dispose();
         }
+        if (highlightTexture != null) {
+            highlightTexture.dispose();
+        }
+        gameOverBackground.dispose();
     }
 
     private void handleInput() {
-        float mouseX = Gdx.input.getX();
-        float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
-        if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
-            int boardX = Gdx.graphics.getWidth() / 2 - boardSize / 2;
-            int boardY = Gdx.graphics.getHeight() / 2 - boardSize / 2;
-            float squareSize = boardSize / 8f;
+        if (!gameOver) {
+            float mouseX = Gdx.input.getX();
+            float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
+            if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
+                int boardX = Gdx.graphics.getWidth() / 2 - boardSize / 2;
+                int boardY = Gdx.graphics.getHeight() / 2 - boardSize / 2;
+                float squareSize = boardSize / 8f;
 
-            if (mouseX >= boardX && mouseX < boardX + boardSize &&
-                mouseY >= boardY && mouseY < boardY + boardSize) {
+                if (mouseX >= boardX && mouseX < boardX + boardSize &&
+                    mouseY >= boardY && mouseY < boardY + boardSize) {
 
-                int col = (int)((mouseX - boardX) / squareSize);
-                int row = 7 - (int)((mouseY - boardY) / squareSize);
+                    int col = (int) ((mouseX - boardX) / squareSize);
+                    int row = 7 - (int) ((mouseY - boardY) / squareSize);
 
-                Position clickedPos = new Position(row, col);
-                Piece[][] board = game.getBoard().getBoard();
+                    Position clickedPos = new Position(row, col);
+                    Piece[][] board = game.getBoard().getBoard();
 
-                if (!isPieceSelected) {
-                    // Premier clic - sélection de pièce
-                    Piece clickedPiece = board[row][col];
-                    if (clickedPiece != null &&
-                        ((game.isWhiteTurn() && clickedPiece.getColor() == PieceColor.WHITE) ||
-                            (!game.isWhiteTurn() && clickedPiece.getColor() == PieceColor.BLACK))) {
-                        selectedPosition = clickedPos;
-                        isPieceSelected = true;
-                    }
-                } else {
-                    if (selectedPosition != null) {
-                        if (game.movePiece(selectedPosition, clickedPos)) {
-                            System.out.println("Pièce déplacée avec succès!");
-                        } else {
-                            System.out.println("Mouvement invalide!");
+                    if (!isPieceSelected) {
+                        // Premier clic - sélection de pièce
+                        Piece clickedPiece = board[row][col];
+                        if (clickedPiece != null &&
+                            ((game.isWhiteTurn() && clickedPiece.getColor() == PieceColor.WHITE) ||
+                                (!game.isWhiteTurn() && clickedPiece.getColor() == PieceColor.BLACK))) {
+                            selectedPosition = clickedPos;
+                            isPieceSelected = true;
                         }
-                        selectedPosition = null;
-                        isPieceSelected = false;
+                    } else {
+                        if (selectedPosition != null) {
+                            boolean moveSuccessful = game.movePiece(selectedPosition, clickedPos);
+                            if (!moveSuccessful && !game.isWaitingForPromotionSelection()) {
+                                System.out.println("Mouvement invalide!");
+                            }
+                            selectedPosition = null;
+                            isPieceSelected = false;
+                        }
                     }
                 }
             }
-        }
 
-        // Clic droit pour désélectionner
-        if (Gdx.input.isButtonJustPressed(Input.Buttons.RIGHT)) {
-            selectedPosition = null;
-            isPieceSelected = false;
-        }
+            // Clic droit pour désélectionner
+            if (Gdx.input.isButtonJustPressed(Input.Buttons.RIGHT)) {
+                selectedPosition = null;
+                isPieceSelected = false;
+            }
 
-        // Gérer la sélection de promotion
-        if (game.isWaitingForPromotionSelection() &&  Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
-            handlePromotionSelection(mouseX, mouseY);
+            // Gérer la sélection de promotion
+            if (game.isWaitingForPromotionSelection() && Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
+                handlePromotionSelection(mouseX, mouseY);
+            }
+        } else {
+            if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
+                float mouseX = Gdx.input.getX();
+                float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
+                int screenHeight = Gdx.graphics.getHeight();
+                int screenWidth = Gdx.graphics.getWidth();
+
+                // Zone du bouton "New Game"
+                Rectangle newGameButton = new Rectangle(
+                    screenWidth / 2 - BUTTON_WIDTH / 2,
+                    screenHeight / 2 - BUTTON_HEIGHT / 2,
+                    BUTTON_WIDTH,
+                    BUTTON_HEIGHT
+                );
+
+                // Zone du bouton "Quit"
+                Rectangle quitButton = new Rectangle(
+                    screenWidth / 2 - BUTTON_WIDTH / 2,
+                    screenHeight / 2 - BUTTON_HEIGHT * 2,
+                    BUTTON_WIDTH,
+                    BUTTON_HEIGHT
+                );
+
+                if (newGameButton.contains(mouseX, mouseY)) {
+                    restartGame();
+                } else if (quitButton.contains(mouseX, mouseY)) {
+                    Gdx.app.exit();
+                }
+            }
         }
     }
 
@@ -242,4 +307,56 @@ public class Chess extends ApplicationAdapter {
         }
     }
 
+    private void renderGameOverScreen() {
+        int screenWidth = Gdx.graphics.getWidth();
+        int screenHeight = Gdx.graphics.getHeight();
+
+        // Fond semi-transparent
+        batch.setColor(1, 1, 1, 0.7f);
+        batch.draw(gameOverBackground, 0, 0, screenWidth, screenHeight);
+        batch.setColor(1, 1, 1, 1);
+
+        // Dessiner le texte du gagnant
+        String winnerText = (winner == PieceColor.WHITE ? "White" : "Black") + " wins!";
+        BitmapFont font = new BitmapFont();
+        font.getData().setScale(2);
+        GlyphLayout layout = new GlyphLayout(font, winnerText);
+        float textX = (screenWidth - layout.width) / 2;
+        float textY = screenHeight / 2 + 100;
+        font.setColor(1, 1, 1, 1);
+        font.draw(batch, winnerText, textX, textY);
+
+        // Dessiner les boutons
+        drawButton("New Game", screenWidth / 2 - BUTTON_WIDTH / 2,
+            screenHeight / 2 - BUTTON_HEIGHT / 2);
+        drawButton("Quit", screenWidth / 2 - BUTTON_WIDTH / 2,
+            screenHeight / 2 - BUTTON_HEIGHT * 2);
+    }
+
+    private void drawButton(String text, float x, float y) {
+        // Fond du bouton
+        batch.setColor(0.3f, 0.3f, 0.3f, 1);
+        batch.draw(highlightTexture, x, y, BUTTON_WIDTH, BUTTON_HEIGHT);
+
+        // Texte du bouton
+        BitmapFont font = new BitmapFont();
+        GlyphLayout layout = new GlyphLayout(font, text);
+        float textX = x + (BUTTON_WIDTH - layout.width) / 2;
+        float textY = y + BUTTON_HEIGHT / 2 + layout.height / 2;
+        font.setColor(1, 1, 1, 1);
+        font.draw(batch, text, textX, textY);
+    }
+
+    private void restartGame() {
+        game = new Game();
+        gameOver = false;
+        winner = null;
+        selectedPosition = null;
+        isPieceSelected = false;
+
+        // Forcer un nettoyage du batch
+        if (batch != null) {
+            batch.setColor(1, 1, 1, 1);
+        }
+    }
 }

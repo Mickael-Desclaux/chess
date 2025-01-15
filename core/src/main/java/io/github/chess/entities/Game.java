@@ -59,7 +59,6 @@ public class Game {
     }
 
     public boolean movePiece(Position from, Position to) {
-        System.out.println(enPassantTarget);
         Piece piece = board.getBoard()[from.getRow()][from.getColumn()];
 
         if (piece == null || (whiteTurn && piece.getColor() != PieceColor.WHITE) ||
@@ -78,8 +77,12 @@ public class Game {
                     lastPawnDoubleMove = null;
                 }
 
-                // Déplacer la pièce
+                // Dans la méthode movePiece de la classe Game
+                boolean isCapture = board.getBoard()[to.getRow()][to.getColumn()] != null;
+                String notation = board.getAlgebraicNotation(piece, from, to, isCapture);
+
                 board.movePiece(from, to);
+                System.out.println(notation);
                 updateKingPositions();
 
                 // Vérifier la promotion du pion
@@ -123,11 +126,9 @@ public class Game {
                 to.getColumn()
             );
             lastPawnDoubleMove = to;
-            System.out.println("Double step detected: enPassantTarget = " + enPassantTarget);
         }
         // Si le mouvement est une prise en passant
         else if (to.equals(enPassantTarget)) {
-            System.out.println("En passant capture detected: Target = " + enPassantTarget);
             board.getBoard()[lastPawnDoubleMove.getRow()][lastPawnDoubleMove.getColumn()] = null;
             // Ne pas déplacer le pion ici, cela sera fait dans movePiece
         }
@@ -135,7 +136,6 @@ public class Game {
         else {
             enPassantTarget = null;
             lastPawnDoubleMove = null;
-            System.out.println("Resetting enPassantTarget and lastPawnDoubleMove");
         }
     }
 
