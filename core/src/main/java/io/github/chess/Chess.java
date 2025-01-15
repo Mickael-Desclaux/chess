@@ -23,7 +23,7 @@ public class Chess extends ApplicationAdapter {
     private static Map<String, Texture> pieceTextures;
     private Texture boardTexture;
     private SpriteBatch batch;
-    private final int boardSize = 480;
+    private final int boardSize = 700;
     private Position selectedPosition;
     private boolean isPieceSelected;
     private Game game;
@@ -41,6 +41,7 @@ public class Chess extends ApplicationAdapter {
     public void create() {
         game = new Game();
         batch = new SpriteBatch();
+        Gdx.graphics.setResizable(false);
 
         boardTexture = new Texture("board/chess_board.png");
 
@@ -105,6 +106,7 @@ public class Chess extends ApplicationAdapter {
 
     @Override
     public void render() {
+
         try {
             if (!gameOver) {
                 boolean whiteCheckmated = game.isCheckmate(PieceColor.WHITE);
@@ -121,7 +123,7 @@ public class Chess extends ApplicationAdapter {
 
         handleInput();
 
-        ScreenUtils.clear(0, 0, 0, 0);
+        ScreenUtils.clear(0.5f, 0.5f, 0.5f, 0.5f);
         batch.begin();
 
         // Draw board

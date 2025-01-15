@@ -35,7 +35,6 @@ public class Board {
         try {
             Piece piece = board[start.getRow()][start.getColumn()];
             if (piece != null) {
-                // Effectuer le mouvement
                 board[start.getRow()][start.getColumn()] = null;
                 board[end.getRow()][end.getColumn()] = piece;
                 piece.setPosition(end);
