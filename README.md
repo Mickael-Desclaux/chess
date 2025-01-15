@@ -1,8 +1,13 @@
-# chess
+# Chess, my first Java game !
 
-A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff).
+This is a small project I did to familiarize myself with the Java language. The goal was to make a functionnal chess game
+using only Java. I chose to use the libGDX framework in order to handle more easily player's inputs. If you want to run a
+build of the game, you can by using the command line `./gradlew lwjgl3:dist`, which will build the game in a jar file
+in the `lwjgl3/build/libs` folder. I will probably come back on this project to add some new features later, like a timer
+for each player and a move history next to the board (and maybe even an IA to compete against you, that would be fun 😄), but
+for now I have to switch to a new Java project !
 
-This project was generated with a template including simple application launchers and an `ApplicationAdapter` extension that draws libGDX logo.
+Here you can see the libGDX doc for this project :
 
 ## Platforms
 
