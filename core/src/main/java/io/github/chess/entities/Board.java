@@ -13,7 +13,6 @@ public class Board {
     }
 
     protected String getAlgebraicNotation(Piece piece, Position start, Position end, boolean isCapture) {
-        // Pour les pions
         if (piece instanceof Pawn) {
             if (isCapture) {
                 return FILES[start.getColumn()] + "x" + FILES[end.getColumn()] + (8 - end.getRow());
@@ -21,7 +20,6 @@ public class Board {
             return FILES[end.getColumn()] + (8 - end.getRow());
         }
 
-        // Pour les autres pièces
         String pieceNotation = "";
         if (piece instanceof King) pieceNotation = "K";
         else if (piece instanceof Queen) pieceNotation = "Q";

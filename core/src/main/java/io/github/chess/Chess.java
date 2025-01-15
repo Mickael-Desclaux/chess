@@ -13,7 +13,9 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import io.github.chess.entities.*;
 import io.github.chess.enums.PieceColor;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Chess extends ApplicationAdapter {
@@ -32,6 +34,7 @@ public class Chess extends ApplicationAdapter {
     private static final int BUTTON_WIDTH = 200;
     private static final int BUTTON_HEIGHT = 50;
     private Position selectedKingPosition;
+    private Texture dotTexture;
 
 
     @Override
@@ -64,11 +67,18 @@ public class Chess extends ApplicationAdapter {
         highlightPixmap.fill();
         highlightTexture = new Texture(highlightPixmap);
         highlightPixmap.dispose();
+
         Pixmap bgPixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         bgPixmap.setColor(0, 0, 0, 0.7f);
         bgPixmap.fill();
         gameOverBackground = new Texture(bgPixmap);
         bgPixmap.dispose();
+
+        Pixmap dotPixmap = new Pixmap(15, 15, Pixmap.Format.RGBA8888);
+        dotPixmap.setColor(0.5f, 0.5f, 0.5f, 0.5f);
+        dotPixmap.fillCircle(7, 7, 7);
+        dotTexture = new Texture(dotPixmap);
+        dotPixmap.dispose();
     }
 
     private Texture getHighlightTexture() {
@@ -78,6 +88,19 @@ public class Chess extends ApplicationAdapter {
     public static Texture getPieceTexture(Piece piece) {
         String key = piece.getColor().name() + "_" + piece.getClass().getSimpleName().toUpperCase();
         return pieceTextures.get(key);
+    }
+
+    private List<Position> getValidMoves(Piece piece, Piece[][] board) {
+        List<Position> validMoves = new ArrayList<>();
+        for (int row = 0; row < 8; row++) {
+            for (int col = 0; col < 8; col++) {
+                Position pos = new Position(row, col);
+                if (piece.isValidMove(pos, board) && game.isValidMoveInCheck(piece, pos)) {
+                    validMoves.add(pos);
+                }
+            }
+        }
+        return validMoves;
     }
 
     @Override
@@ -105,17 +128,15 @@ public class Chess extends ApplicationAdapter {
         int boardX = Gdx.graphics.getWidth() / 2 - boardSize / 2;
         int boardY = Gdx.graphics.getHeight() / 2 - boardSize / 2;
         batch.draw(boardTexture, boardX, boardY, boardSize, boardSize);
-
-        // Calculer la taille exacte d'une case
         float squareSize = (float) boardSize / 8;
 
         if (game.isInCheck(PieceColor.WHITE)) {
-            Position whiteKingPos = game.getWhiteKingPosition(); // Il faut ajouter cette méthode dans Game
+            Position whiteKingPos = game.getWhiteKingPosition();
             float x = boardX + (whiteKingPos.getColumn() * squareSize);
             float y = boardY + ((7 - whiteKingPos.getRow()) * squareSize);
-            batch.setColor(1, 0, 0, 0.5f); // Rouge semi-transparent
+            batch.setColor(1, 0, 0, 0.5f);
             batch.draw(getHighlightTexture(), x, y, squareSize, squareSize);
-            batch.setColor(1, 1, 1, 1); // Réinitialiser la couleur
+            batch.setColor(1, 1, 1, 1);
         }
 
         if (game.isInCheck(PieceColor.BLACK)) {
@@ -123,6 +144,15 @@ public class Chess extends ApplicationAdapter {
             float x = boardX + (blackKingPos.getColumn() * squareSize);
             float y = boardY + ((7 - blackKingPos.getRow()) * squareSize);
             batch.setColor(1, 0, 0, 0.5f);
+            batch.draw(getHighlightTexture(), x, y, squareSize, squareSize);
+            batch.setColor(1, 1, 1, 1);
+        }
+
+        // Coloring selected square
+        if (selectedPosition != null) {
+            float x = boardX + (selectedPosition.getColumn() * squareSize);
+            float y = boardY + ((7 - selectedPosition.getRow()) * squareSize);
+            batch.setColor(1, 1, 0, 0.5f);
             batch.draw(getHighlightTexture(), x, y, squareSize, squareSize);
             batch.setColor(1, 1, 1, 1);
         }
@@ -135,34 +165,42 @@ public class Chess extends ApplicationAdapter {
                 if (piece != null) {
                     Texture pieceTexture = getPieceTexture(piece);
                     if (pieceTexture != null) {
-                        // Calculer la position exacte de chaque pièce
                         float x = boardX + (col * squareSize);
-                        // Pour l'axe Y, on inverse les coordonnées car l'origine est en bas à gauche dans LibGDX
                         float y = boardY + ((7 - row) * squareSize);
 
-                        // Optionnel : ajuster la taille des pièces pour qu'elles soient légèrement plus petites que les cases
-                        float pieceSize = squareSize * 0.7f; // 90% de la taille de la case
+                        float pieceSize = squareSize * 0.7f;
                         float offsetX = (squareSize - pieceSize) / 2;
                         float offsetY = (squareSize - pieceSize) / 2;
 
                         batch.draw(pieceTexture,
-                            x + offsetX,  // Centrer horizontalement
-                            y + offsetY,  // Centrer verticalement
-                            pieceSize,    // Largeur de la pièce
-                            pieceSize);   // Hauteur de la pièce
+                            x + offsetX,
+                            y + offsetY,
+                            pieceSize,
+                            pieceSize);
                     }
                 }
             }
         }
 
-        // Afficher les options de promotion si nécessaire
+        // Display possible moves
+        if (selectedPosition != null) {
+            Piece selectedPiece = game.getBoard().getBoard()[selectedPosition.getRow()][selectedPosition.getColumn()];
+            List<Position> validMoves = getValidMoves(selectedPiece, pieces);
+            for (Position move : validMoves) {
+                float moveX = boardX + (move.getColumn() * squareSize) + (squareSize / 2) - (dotTexture.getWidth() / 2);
+                float moveY = boardY + ((7 - move.getRow()) * squareSize) + (squareSize / 2) - (dotTexture.getHeight() / 2);
+                batch.draw(dotTexture, moveX, moveY);
+            }
+        }
+
+        // Display promotion selection
         if (game.isWaitingForPromotionSelection()) {
             int buttonSize = 64;
             int buttonSpacing = 10;
             int startX = Gdx.graphics.getWidth() / 2 - (2 * buttonSize + buttonSpacing);
             int startY = Gdx.graphics.getHeight() / 2 - buttonSize / 2;
 
-            // Dessiner les boutons de promotion
+            // Draw promotion options
             batch.draw(getPieceTexture(new Queen(game.getPromotionColor(), game.getPromotionPosition(), game)), startX, startY, buttonSize, buttonSize);
             batch.draw(getPieceTexture(new Rook(game.getPromotionColor(), game.getPromotionPosition(), game)), startX + buttonSize + buttonSpacing, startY, buttonSize, buttonSize);
             batch.draw(getPieceTexture(new Bishop(game.getPromotionColor(), game.getPromotionPosition(), game)), startX, startY - buttonSize - buttonSpacing, buttonSize, buttonSize);
@@ -208,7 +246,7 @@ public class Chess extends ApplicationAdapter {
                     Piece[][] board = game.getBoard().getBoard();
 
                     if (!isPieceSelected) {
-                        // Premier clic - sélection de pièce
+                        // First click - selecting piece
                         Piece clickedPiece = board[row][col];
                         if (clickedPiece != null &&
                             ((game.isWhiteTurn() && clickedPiece.getColor() == PieceColor.WHITE) ||
@@ -221,7 +259,7 @@ public class Chess extends ApplicationAdapter {
                         }
                     } else {
                         if (selectedKingPosition != null) {
-                            // Vérifier si le deuxième clic est sur une tour pour le roque
+                            // Check if 2nd click is on the rook for castle
                             Piece clickedPiece = board[row][col];
                             if (clickedPiece instanceof Rook && clickedPiece.getColor() == game.getBoard().getBoard()[selectedKingPosition.getRow()][selectedKingPosition.getColumn()].getColor()) {
                                 boolean isKingSide = col > selectedKingPosition.getColumn();
@@ -248,14 +286,14 @@ public class Chess extends ApplicationAdapter {
                 }
             }
 
-            // Clic droit pour désélectionner
+            // Right click to unselect
             if (Gdx.input.isButtonJustPressed(Input.Buttons.RIGHT)) {
                 selectedPosition = null;
                 selectedKingPosition = null;
                 isPieceSelected = false;
             }
 
-            // Gérer la sélection de promotion
+            // Handle promotion
             if (game.isWaitingForPromotionSelection() && Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
                 handlePromotionSelection(mouseX, mouseY);
             }
@@ -266,7 +304,7 @@ public class Chess extends ApplicationAdapter {
                 int screenHeight = Gdx.graphics.getHeight();
                 int screenWidth = Gdx.graphics.getWidth();
 
-                // Zone du bouton "New Game"
+                // New Game button rectangle
                 Rectangle newGameButton = new Rectangle(
                     screenWidth / 2 - BUTTON_WIDTH / 2,
                     screenHeight / 2 - BUTTON_HEIGHT / 2,
@@ -274,7 +312,7 @@ public class Chess extends ApplicationAdapter {
                     BUTTON_HEIGHT
                 );
 
-                // Zone du bouton "Quit"
+                // Quit button rectangle
                 Rectangle quitButton = new Rectangle(
                     screenWidth / 2 - BUTTON_WIDTH / 2,
                     screenHeight / 2 - BUTTON_HEIGHT * 2,
@@ -292,13 +330,12 @@ public class Chess extends ApplicationAdapter {
     }
 
     private void handlePromotionSelection(float mouseX, float mouseY) {
-        // Définir les positions des boutons de promotion
+        // Promotion options location
         int buttonSize = 64;
         int buttonSpacing = 10;
         int startX = Gdx.graphics.getWidth() / 2 - (2 * buttonSize + buttonSpacing);
         int startY = Gdx.graphics.getHeight() / 2 - buttonSize / 2;
 
-        // Vérifier quel bouton a été cliqué
         if (mouseX >= startX && mouseX < startX + buttonSize &&
             mouseY >= startY && mouseY < startY + buttonSize) {
             promotePawn(game.getPromotionPosition(), game.getPromotionColor(), Queen.class);
@@ -322,7 +359,7 @@ public class Chess extends ApplicationAdapter {
             System.out.println("Pawn promoted to " + promotedPiece.getClass().getSimpleName());
             game.setPromoting(false);
             game.setWaitingForPromotionSelection(false);
-            game.setWhiteTurn(!game.isWhiteTurn()); // Changer le tour après la promotion
+            game.setWhiteTurn(!game.isWhiteTurn());
         } catch (Exception e) {
             e.printStackTrace();
             System.out.println("An error occurred while promoting the pawn: " + e.getMessage());
@@ -333,12 +370,10 @@ public class Chess extends ApplicationAdapter {
         int screenWidth = Gdx.graphics.getWidth();
         int screenHeight = Gdx.graphics.getHeight();
 
-        // Fond semi-transparent
         batch.setColor(1, 1, 1, 0.7f);
         batch.draw(gameOverBackground, 0, 0, screenWidth, screenHeight);
         batch.setColor(1, 1, 1, 1);
 
-        // Dessiner le texte du gagnant
         String winnerText = (winner == PieceColor.WHITE ? "White" : "Black") + " wins!";
         BitmapFont font = new BitmapFont();
         font.getData().setScale(2);
@@ -348,7 +383,6 @@ public class Chess extends ApplicationAdapter {
         font.setColor(1, 1, 1, 1);
         font.draw(batch, winnerText, textX, textY);
 
-        // Dessiner les boutons
         drawButton("New Game", screenWidth / 2 - BUTTON_WIDTH / 2,
             screenHeight / 2 - BUTTON_HEIGHT / 2);
         drawButton("Quit", screenWidth / 2 - BUTTON_WIDTH / 2,
@@ -356,11 +390,9 @@ public class Chess extends ApplicationAdapter {
     }
 
     private void drawButton(String text, float x, float y) {
-        // Fond du bouton
         batch.setColor(0.3f, 0.3f, 0.3f, 1);
         batch.draw(highlightTexture, x, y, BUTTON_WIDTH, BUTTON_HEIGHT);
 
-        // Texte du bouton
         BitmapFont font = new BitmapFont();
         GlyphLayout layout = new GlyphLayout(font, text);
         float textX = x + (BUTTON_WIDTH - layout.width) / 2;
@@ -376,7 +408,6 @@ public class Chess extends ApplicationAdapter {
         selectedPosition = null;
         isPieceSelected = false;
 
-        // Forcer un nettoyage du batch
         if (batch != null) {
             batch.setColor(1, 1, 1, 1);
         }

@@ -14,7 +14,7 @@ public class Pawn extends Piece {
         int rowDiff = (newPosition.getRow() - position.getRow()) * forwardDirection;
         int columnDiff = newPosition.getColumn() - position.getColumn();
 
-        // Vérification de la prise en passant
+        // Checking for En Passant
         if (Math.abs(columnDiff) == 1 && rowDiff == 1) {
             Position enPassantTarget = game.getEnPassantTarget();
             if (enPassantTarget != null && enPassantTarget.equals(newPosition)) {
@@ -24,14 +24,12 @@ public class Pawn extends Piece {
                     if (potentialPawn != null &&
                         potentialPawn instanceof Pawn &&
                         potentialPawn.getColor() != this.pieceColor) {
-                        System.out.println("En passant capture validated: Target = " + enPassantTarget);
                         return true;
                     }
                 }
             }
         }
 
-        // Mouvement en avant
         if (columnDiff == 0 && rowDiff == 1 && board[newPosition.getRow()][newPosition.getColumn()] == null) {
             return true;
         }
@@ -40,14 +38,12 @@ public class Pawn extends Piece {
             (pieceColor == PieceColor.BLACK && position.getRow() == 1);
         if (columnDiff == 0 && rowDiff == 2 && isStartingPosition &&
             board[newPosition.getRow()][newPosition.getColumn()] == null) {
-            // Vérification de la case intermédiaire
             int middleRow = position.getRow() + forwardDirection;
             if (board[middleRow][position.getColumn()] == null) {
-                return true; // Mouvement de deux cases en avant
+                return true;
             }
         }
 
-        // Capture d'une pièce adverse
         if (Math.abs(columnDiff) == 1 && rowDiff == 1 && board[newPosition.getRow()][newPosition.getColumn()] != null &&
             board[newPosition.getRow()][newPosition.getColumn()].pieceColor != this.pieceColor) {
             return true;
