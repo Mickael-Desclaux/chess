@@ -31,6 +31,8 @@ public class Chess extends ApplicationAdapter {
     private Texture gameOverBackground;
     private static final int BUTTON_WIDTH = 200;
     private static final int BUTTON_HEIGHT = 50;
+    private Position selectedKingPosition;
+
 
     @Override
     public void create() {
@@ -212,17 +214,36 @@ public class Chess extends ApplicationAdapter {
                             ((game.isWhiteTurn() && clickedPiece.getColor() == PieceColor.WHITE) ||
                                 (!game.isWhiteTurn() && clickedPiece.getColor() == PieceColor.BLACK))) {
                             selectedPosition = clickedPos;
+                            if (clickedPiece instanceof King) {
+                                selectedKingPosition = clickedPos;
+                            }
                             isPieceSelected = true;
                         }
                     } else {
-                        if (selectedPosition != null) {
+                        if (selectedKingPosition != null) {
+                            // Vérifier si le deuxième clic est sur une tour pour le roque
+                            Piece clickedPiece = board[row][col];
+                            if (clickedPiece instanceof Rook && clickedPiece.getColor() == game.getBoard().getBoard()[selectedKingPosition.getRow()][selectedKingPosition.getColumn()].getColor()) {
+                                boolean isKingSide = col > selectedKingPosition.getColumn();
+                                boolean moveSuccessful = game.castle(clickedPiece.getColor(), isKingSide);
+                                if (!moveSuccessful) {
+                                    System.out.println("Roque invalide!");
+                                }
+                            } else {
+                                boolean moveSuccessful = game.movePiece(selectedPosition, clickedPos);
+                                if (!moveSuccessful && !game.isWaitingForPromotionSelection()) {
+                                    System.out.println("Mouvement invalide!");
+                                }
+                            }
+                            selectedKingPosition = null;
+                        } else {
                             boolean moveSuccessful = game.movePiece(selectedPosition, clickedPos);
                             if (!moveSuccessful && !game.isWaitingForPromotionSelection()) {
                                 System.out.println("Mouvement invalide!");
                             }
-                            selectedPosition = null;
-                            isPieceSelected = false;
                         }
+                        selectedPosition = null;
+                        isPieceSelected = false;
                     }
                 }
             }
@@ -230,6 +251,7 @@ public class Chess extends ApplicationAdapter {
             // Clic droit pour désélectionner
             if (Gdx.input.isButtonJustPressed(Input.Buttons.RIGHT)) {
                 selectedPosition = null;
+                selectedKingPosition = null;
                 isPieceSelected = false;
             }
 

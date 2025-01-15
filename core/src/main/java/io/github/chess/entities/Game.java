@@ -14,6 +14,12 @@ public class Game {
     private PieceColor promotionColor;
     private boolean isPromoting = false;
     private boolean waitingForPromotionSelection = false;
+    private boolean whiteKingMoved = false;
+    private boolean blackKingMoved = false;
+    private boolean whiteRookAMoved = false;
+    private boolean whiteRookHMoved = false;
+    private boolean blackRookAMoved = false;
+    private boolean blackRookHMoved = false;
 
     public Game() {
         this.board = new Board();
@@ -64,6 +70,36 @@ public class Game {
         if (piece == null || (whiteTurn && piece.getColor() != PieceColor.WHITE) ||
             (!whiteTurn && piece.getColor() != PieceColor.BLACK)) {
             return false;
+        }
+
+        if (piece instanceof King) {
+            if (piece.getColor() == PieceColor.WHITE) {
+                whiteKingMoved = true;
+            } else {
+                blackKingMoved = true;
+            }
+        } else if (piece instanceof Rook) {
+            if (piece.getColor() == PieceColor.WHITE) {
+                if (from.equals(new Position(7, 0))) {
+                    whiteRookAMoved = true;
+                } else if (from.equals(new Position(7, 7))) {
+                    whiteRookHMoved = true;
+                }
+            } else {
+                if (from.equals(new Position(0, 0))) {
+                    blackRookAMoved = true;
+                } else if (from.equals(new Position(0, 7))) {
+                    blackRookHMoved = true;
+                }
+            }
+        }
+
+        if (piece instanceof King) {
+            int colDiff = to.getColumn() - from.getColumn();
+            if (Math.abs(colDiff) == 2) {
+                boolean isKingSide = colDiff > 0;
+                return castle(piece.getColor(), isKingSide);
+            }
         }
 
         try {
@@ -222,6 +258,62 @@ public class Game {
         }
         return false;
     }
+
+    private boolean canCastle(PieceColor color, boolean isKingSide) {
+        Position kingPosition = (color == PieceColor.WHITE) ? whiteKingPosition : blackKingPosition;
+        Position rookPosition = isKingSide ? new Position(kingPosition.getRow(), 7) : new Position(kingPosition.getRow(), 0);
+        boolean kingMoved = (color == PieceColor.WHITE) ? whiteKingMoved : blackKingMoved;
+        boolean rookMoved = isKingSide ? (color == PieceColor.WHITE ? whiteRookHMoved : blackRookHMoved) : (color == PieceColor.WHITE ? whiteRookAMoved : blackRookAMoved);
+
+        if (kingMoved || rookMoved) {
+            return false;
+        }
+
+        int direction = isKingSide ? 1 : -1;
+        int startCol = isKingSide ? kingPosition.getColumn() + 1 : kingPosition.getColumn() - 1;
+        int endCol = isKingSide ? 6 : 1;
+
+        for (int col = startCol; col != endCol; col += direction) {
+            Position pos = new Position(kingPosition.getRow(), col);
+            if (board.getBoard()[pos.getRow()][pos.getColumn()] != null || isInCheckAfterMove(kingPosition, pos)) {
+                return false;
+            }
+        }
+
+        return !isInCheck(color);
+    }
+
+    public boolean castle(PieceColor color, boolean isKingSide) {
+        if (!canCastle(color, isKingSide)) {
+            return false;
+        }
+
+        Position kingPosition = (color == PieceColor.WHITE) ? whiteKingPosition : blackKingPosition;
+        Position rookPosition = isKingSide ? new Position(kingPosition.getRow(), 7) : new Position(kingPosition.getRow(), 0);
+        Position newKingPosition = isKingSide ? new Position(kingPosition.getRow(), 6) : new Position(kingPosition.getRow(), 2);
+        Position newRookPosition = isKingSide ? new Position(kingPosition.getRow(), 5) : new Position(kingPosition.getRow(), 3);
+
+        board.movePiece(kingPosition, newKingPosition);
+        board.movePiece(rookPosition, newRookPosition);
+
+        updateKingPositions();
+        whiteTurn = !whiteTurn;
+        return true;
+    }
+
+
+    private boolean isInCheckAfterMove(Position from, Position to) {
+        Piece piece = board.getBoard()[from.getRow()][from.getColumn()];
+        Piece capturedPiece = board.getBoard()[to.getRow()][to.getColumn()];
+
+        board.movePiece(from, to);
+        boolean inCheck = isInCheck(piece.getColor());
+        board.movePiece(to, from);
+        board.getBoard()[to.getRow()][to.getColumn()] = capturedPiece;
+
+        return inCheck;
+    }
+
 
     public Board getBoard() {
         return board;
