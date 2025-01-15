@@ -1,4 +1,4 @@
-# Chess, my first Java game !
+# ♟️ Chess, my first Java game ! ♟️
 
 This is a small project I did to familiarize myself with the Java language. The goal was to make a functionnal chess game
 using only Java. I chose to use the libGDX framework in order to handle more easily player's inputs. If you want to run a
